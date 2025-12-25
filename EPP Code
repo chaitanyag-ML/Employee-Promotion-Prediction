@@ -1,0 +1,75 @@
+# Employee Promotion Prediction using Machine Learning
+
+# Import libraries
+import pandas as pd
+import numpy as np
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+import joblib
+
+# Load dataset
+data = pd.read_csv("employee_promotion.csv")
+
+# Handle missing values
+data['previous_year_rating'].fillna(data['previous_year_rating'].median(), inplace=True)
+data['education'].fillna(data['education'].mode()[0], inplace=True)
+
+# Features and target
+X = data.drop('promotion', axis=1)
+y = data['promotion']
+
+# Categorical and numerical columns
+categorical_cols = ['department', 'education', 'gender']
+numerical_cols = [
+    'no_of_trainings', 'age', 'previous_year_rating',
+    'length_of_service', 'avg_training_score'
+]
+
+# Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), numerical_cols),
+        ('cat', OneHotEncoder(drop='first'), categorical_cols)
+    ]
+)
+
+# Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Logistic Regression model
+lr_model = LogisticRegression(max_iter=1000)
+X_train_processed = preprocessor.fit_transform(X_train)
+X_test_processed = preprocessor.transform(X_test)
+
+lr_model.fit(X_train_processed, y_train)
+lr_preds = lr_model.predict(X_test_processed)
+
+print("Logistic Regression Accuracy:", accuracy_score(y_test, lr_preds))
+print(classification_report(y_test, lr_preds))
+
+# Random Forest model
+rf_model = RandomForestClassifier(
+    n_estimators=200,
+    random_state=42
+)
+
+rf_model.fit(X_train_processed, y_train)
+rf_preds = rf_model.predict(X_test_processed)
+
+print("Random Forest Accuracy:", accuracy_score(y_test, rf_preds))
+print(classification_report(y_test, rf_preds))
+
+# Save models and preprocessor
+joblib.dump(lr_model, "logistic_regression_model.pkl")
+joblib.dump(rf_model, "random_forest_model.pkl")
+joblib.dump(preprocessor, "preprocessor.pkl")
+
+print("Models and preprocessor saved successfully!")
